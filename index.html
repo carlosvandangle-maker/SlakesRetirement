@@ -26,6 +26,7 @@
       top: 20px;
       right: 20px;
       font-size: 8rem;
+      transition: transform 0.3s ease;
     }
 
     .bounce {
@@ -69,6 +70,13 @@
       to { transform: scale(1.2); }
     }
 
+    input {
+      padding: 6px;
+      width: 80px;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
     .day-bar {
       width: 80%;
       height: 35px;
@@ -93,6 +101,10 @@
       top: -5px;
     }
 
+    #totalFill {
+      background: linear-gradient(to right, #ff9800, #ffc107);
+    }
+
     table {
       margin: 30px auto;
       border-collapse: collapse;
@@ -108,7 +120,7 @@
 <body>
 
 <div id="bg-title">Stu's Retirement</div>
-<div id="moodEmoji">😞</div>
+<div id="moodEmoji">😩</div>
 
 <div id="celebration">
   <div id="celebrationText">🎉</div>
@@ -116,11 +128,20 @@
 
 <h1 id="countdown"></h1>
 
+<label>Leave Days: </label>
+<input type="number" id="leaveInput" value="15" min="0">
+
 <div id="dayPercentText"></div>
 
 <div class="day-bar">
   <div class="day-fill" id="dayFill"></div>
   <div class="day-marker" id="dayMarker"></div>
+</div>
+
+<h3 id="totalDaysText"></h3>
+<div class="day-bar">
+  <div class="day-fill" id="totalFill"></div>
+  <div class="day-marker" id="totalMarker"></div>
 </div>
 
 <table>
@@ -134,22 +155,32 @@
 <tr><td>🗑 Bin Days</td><td id="bins"></td></tr>
 <tr><td>🌑 Moon Cycles</td><td id="moonCycles"></td></tr>
 <tr><td>🎬 Movies</td><td id="movies"></td></tr>
+<tr><td>📺 EastEnders Episodes</td><td id="eastenders"></td></tr>
 </table>
 
 <script>
 const targetDate = new Date("2026-07-28T16:30:00");
-const leaveDays = 15;
+const startDate = new Date("2026-03-20T00:00:00");
 
 const MERCURY_DAY_MS = 176*24*60*60*1000;
 const BIRTHS_PER_DAY = 1800;
 const DEATHS_PER_DAY = 1700;
+
+const bankHolidays = [
+  "2026-01-01","2026-04-03","2026-04-06",
+  "2026-05-04","2026-05-25","2026-08-31",
+  "2026-12-25","2026-12-28"
+];
+
+function isBankHoliday(d){
+  return bankHolidays.includes(d.toISOString().split("T")[0]);
+}
 
 setInterval(update,1000);
 update();
 
 function update(){
   const now = new Date();
-
   const diff = targetDate - now;
 
   const d = Math.floor(diff/(1000*60*60*24));
@@ -160,7 +191,9 @@ function update(){
   document.getElementById("countdown").innerHTML =
     `${d}d ${pad(h)}:${pad(m)}:${pad(s)}`;
 
-  // working day graph
+  const leaveDays = Number(document.getElementById("leaveInput").value) || 0;
+
+  // WORK TIMES
   const start = new Date(now); start.setHours(9,0,0,0);
   const lunchStart = new Date(now); lunchStart.setHours(12,30,0,0);
   const lunchEnd = new Date(now); lunchEnd.setHours(13,30,0,0);
@@ -168,35 +201,10 @@ function update(){
   const isFriday = now.getDay() === 5;
 
   const end = new Date(now);
-  if(isFriday){
-    end.setHours(16,30,0,0);
-  } else {
-    end.setHours(17,0,0,0);
-  }
+  if(isFriday) end.setHours(16,30,0,0);
+  else end.setHours(17,0,0,0);
 
-  const totalWork = (lunchStart-start)+(end-lunchEnd);
-  let worked=0;
-
-  if(now<=start) worked=0;
-  else if(now<lunchStart) worked=now-start;
-  else if(now<=lunchEnd) worked=lunchStart-start;
-  else if(now<end) worked=(lunchStart-start)+(now-lunchEnd);
-  else worked=totalWork;
-
-  const percent = (worked/totalWork)*100;
-
-  document.getElementById("dayFill").style.width = percent+"%";
-  document.getElementById("dayMarker").style.left = percent+"%";
-  document.getElementById("dayPercentText").innerText =
-    percent.toFixed(1)+"% of today completed";
-
-  const el=document.getElementById("moodEmoji");
-  el.innerText = percent>95?"🤩":percent>80?"😁":percent>50?"🙂":"😞";
-
-  if(percent>90) el.classList.add("bounce");
-  else el.classList.remove("bounce");
-
-  // celebrations
+  // CELEBRATIONS
   const morningStart = new Date(now); morningStart.setHours(9,0,0,0);
   const morningEnd = new Date(now); morningEnd.setHours(9,5,0,0);
 
@@ -220,13 +228,45 @@ function update(){
     c.style.display = "none";
   }
 
-  // metrics
+  // DAY PROGRESS
+  const totalWork = (lunchStart-start)+(end-lunchEnd);
+  let worked=0;
+
+  if(now<=start) worked=0;
+  else if(now<lunchStart) worked=now-start;
+  else if(now<=lunchEnd) worked=lunchStart-start;
+  else if(now<end) worked=(lunchStart-start)+(now-lunchEnd);
+  else worked=totalWork;
+
+  const percent = (worked/totalWork)*100;
+
+  document.getElementById("dayFill").style.width = percent+"%";
+  document.getElementById("dayMarker").style.left = percent+"%";
+  document.getElementById("dayPercentText").innerText =
+    percent.toFixed(1)+"% of today completed";
+
+  // TOTAL PROGRESS
+  const totalDuration = targetDate - startDate;
+  const elapsedTotal = now - startDate;
+
+  let totalPercent = (elapsedTotal / totalDuration) * 100;
+  totalPercent = Math.max(0, Math.min(100, totalPercent));
+
+  const totalDaysLeft = Math.ceil((targetDate - now) / (1000 * 60 * 60 * 24));
+
+  document.getElementById("totalFill").style.width = totalPercent + "%";
+  document.getElementById("totalMarker").style.left = totalPercent + "%";
+
+  document.getElementById("totalDaysText").innerText =
+    `📅 ${totalDaysLeft} total days remaining (${totalPercent.toFixed(1)}% complete)`;
+
+  // WORKING DAYS (minus weekends + bank holidays)
   let wd=0;
   let t=new Date(now);
 
   while(t<targetDate){
     t.setDate(t.getDate()+1);
-    if(t.getDay()!=0 && t.getDay()!=6) wd++;
+    if(t.getDay()!=0 && t.getDay()!=6 && !isBankHoliday(t)) wd++;
   }
 
   wd=Math.max(0,wd-leaveDays);
@@ -234,6 +274,7 @@ function update(){
   document.getElementById("workdays").innerHTML=wd;
   document.getElementById("workhours").innerHTML=wd*7;
 
+  // ✅ MERCURY DAYS RESTORED
   document.getElementById("mercuryDays").innerHTML =
     (diff/MERCURY_DAY_MS).toFixed(4);
 
@@ -245,13 +286,16 @@ function update(){
   document.getElementById("deaths").innerHTML =
     Math.floor(daysLeft*DEATHS_PER_DAY).toLocaleString();
 
-  let pd=0, d2=new Date(now);
+  // PAYDAYS
+  let pd=0;
+  let d2=new Date(now);
   while(d2<targetDate){
     if(d2.getDate()==28) pd++;
     d2.setDate(d2.getDate()+1);
   }
   document.getElementById("paydays").innerHTML=pd;
 
+  // BIN DAYS
   let b=new Date("2026-03-20"),bins=0;
   while(b<targetDate){
     if(b>now) bins++;
@@ -264,6 +308,15 @@ function update(){
 
   document.getElementById("movies").innerHTML =
     Math.floor(diff/(2*3600000));
+
+  // EASTENDERS
+  let ee=0;
+  let eedate = new Date(now);
+  while(eedate < targetDate){
+    eedate.setDate(eedate.getDate()+1);
+    if(eedate.getDay()>=1 && eedate.getDay()<=4) ee++;
+  }
+  document.getElementById("eastenders").innerHTML = ee;
 }
 
 function spawnConfetti(){
