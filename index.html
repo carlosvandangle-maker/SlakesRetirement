@@ -24,7 +24,7 @@
       position: fixed;
       top: 20px;
       right: 20px;
-      font-size: 8rem;
+      font-size: 6rem;
     }
 
     .bounce {
@@ -41,6 +41,7 @@
       background: #eee;
       margin: 10px auto 30px;
       border-radius: 20px;
+      overflow: hidden;
     }
 
     .day-fill {
@@ -63,12 +64,42 @@
       padding: 8px 12px;
     }
 
+    /* CONFETTI */
     #celebration {
       position: fixed;
-      top: 100px;
+      top: 0;
+      left: 0;
       width: 100%;
+      height: 100%;
       pointer-events: none;
+      z-index: 9999;
     }
+
+    .confetti {
+      position: absolute;
+      font-size: 2rem;
+      animation: fall 2s linear forwards;
+    }
+
+    @keyframes fall {
+      0% { transform: translateY(-50px); }
+      100% { transform: translateY(100vh); }
+    }
+
+    /* 🖕 FINGER */
+    #fingerContainer {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 260px;
+      text-align: center;
+    }
+
+    #fingerEmoji {
+      font-size: 4rem;
+      transition: transform 0.3s ease;
+    }
+
   </style>
 </head>
 
@@ -85,44 +116,39 @@
 
 <h3>🟢 Today's Work Progress (9:00–17:00)</h3>
 <div id="dayPercentText"></div>
+<div class="day-bar"><div id="dayFill" class="day-fill"></div></div>
 
-<div class="day-bar">
-  <div class="day-fill" id="dayFill"></div>
-</div>
-
-<h3 id="careerLabel"></h3>
+<h3>🟠 Career Progress</h3>
 <div id="totalDaysText"></div>
-
-<div class="day-bar">
-  <div class="day-fill" id="totalFill"></div>
-</div>
+<div class="day-bar"><div id="totalFill" class="day-fill"></div></div>
 
 <table>
 <tr><th>Metric</th><th>Value</th></tr>
-<tr><td>🇬🇧 Working Days</td><td id="workdays"></td></tr>
-<tr><td>⏱ Working Hours</td><td id="workhours"></td></tr>
-<tr><td>☿ Mercury Days</td><td id="mercuryDays"></td></tr>
-<tr><td>👶 Births</td><td id="births"></td></tr>
-<tr><td>⚰️ Deaths</td><td id="deaths"></td></tr>
-<tr><td>💰 Future Paydays</td><td id="paydays"></td></tr>
-<tr><td>💷 Paychecks Stolen</td><td id="earnedPay"></td></tr>
-<tr><td>🗑 Bin Days</td><td id="bins"></td></tr>
-<tr><td>🌑 Moon Cycles</td><td id="moon"></td></tr>
-<tr><td>🎬 Movies</td><td id="movies"></td></tr>
-<tr><td>📺 EastEnders</td><td id="ee"></td></tr>
+<tr><td>Working Days</td><td id="workdays"></td></tr>
+<tr><td>Working Hours</td><td id="workhours"></td></tr>
+<tr><td>Mercury Days</td><td id="mercuryDays"></td></tr>
+<tr><td>Births</td><td id="births"></td></tr>
+<tr><td>Deaths</td><td id="deaths"></td></tr>
+<tr><td>Future Paydays</td><td id="paydays"></td></tr>
+<tr><td>Paychecks Stolen</td><td id="earnedPay"></td></tr>
+<tr><td>Bin Days</td><td id="bins"></td></tr>
+<tr><td>Moon Cycles</td><td id="moon"></td></tr>
+<tr><td>Movies</td><td id="movies"></td></tr>
+<tr><td>EastEnders</td><td id="ee"></td></tr>
 </table>
+
+<!-- 🖕 FINGER -->
+<div id="fingerContainer">
+  <div id="fingerEmoji">✊</div>
+  <div id="fingerText"></div>
+  <div class="day-bar">
+    <div class="day-fill" id="fingerFill"></div>
+  </div>
+</div>
 
 <script>
 const targetDate = new Date("2026-07-28T16:30:00");
 const startDate = new Date("2002-04-01");
-
-const MERCURY_DAY_MS = 176*24*60*60*1000;
-const BIRTHS_PER_DAY = 1800;
-const DEATHS_PER_DAY = 1700;
-
-const bankHolidays = [
-  "2026-04-03","2026-04-06","2026-05-04","2026-05-25"
-];
 
 setInterval(update,1000);
 update();
@@ -131,7 +157,6 @@ function update(){
   const now = new Date();
   const diff = targetDate - now;
 
-  // COUNTDOWN
   const d = Math.floor(diff/86400000);
   const h = Math.floor(diff/3600000 % 24);
   const m = Math.floor(diff/60000 % 60);
@@ -139,99 +164,57 @@ function update(){
 
   countdown.innerText = `${d}d ${pad(h)}:${pad(m)}:${pad(s)}`;
 
-  // DAY PROGRESS
+  // DAY %
   const start = new Date(now); start.setHours(9,0,0,0);
-  const lunchStart = new Date(now); lunchStart.setHours(12,30,0,0);
-  const lunchEnd = new Date(now); lunchEnd.setHours(13,30,0,0);
   const end = new Date(now); end.setHours(17,0,0,0);
 
-  const totalWork = (lunchStart-start)+(end-lunchEnd);
-
-  let worked=0;
-  if(now<=start) worked=0;
-  else if(now<lunchStart) worked=now-start;
-  else if(now<=lunchEnd) worked=lunchStart-start;
-  else if(now<end) worked=(lunchStart-start)+(now-lunchEnd);
-  else worked=totalWork;
-
-  const percent = (worked/totalWork)*100;
+  const percent = Math.min(Math.max((now-start)/(end-start),0),1)*100;
 
   dayFill.style.width = percent+"%";
-  dayPercentText.innerText = percent.toFixed(1)+"% complete today";
+  dayPercentText.innerText = percent.toFixed(1)+"% of today";
 
-  // EMOJI
-  if(percent<25) moodEmoji.innerText="😩";
-  else if(percent<50) moodEmoji.innerText="😐";
-  else if(percent<75) moodEmoji.innerText="😊";
-  else moodEmoji.innerText="🤩";
+  moodEmoji.innerText = percent<25?"😩":percent<50?"😐":percent<75?"😊":"🤩";
 
-  if(percent>90) moodEmoji.classList.add("bounce");
-  else moodEmoji.classList.remove("bounce");
-
-  // TOTAL CAREER
+  // TOTAL
   const totalPercent = ((now-startDate)/(targetDate-startDate))*100;
   totalFill.style.width = totalPercent+"%";
+  totalDaysText.innerText = `${d} days remaining | ${totalPercent.toFixed(1)}%`;
 
-  totalDaysText.innerText =
-    `${d} days remaining | ${totalPercent.toFixed(1)}% of career complete`;
-
-  careerLabel.innerText =
-    `🟠 Career Progress (${startDate.toLocaleDateString()} → Retirement)`;
-
-  // WORKING DAYS
+  // WORK DAYS
   let wd=0, t=new Date(now);
   while(t<targetDate){
     t.setDate(t.getDate()+1);
-    if(t.getDay()>0 && t.getDay()<6 &&
-       !bankHolidays.includes(t.toISOString().split("T")[0])) wd++;
+    if(t.getDay()>0 && t.getDay()<6) wd++;
   }
-
-  const leave = Number(leaveInput.value)||0;
-  wd = Math.max(0, wd - leave);
-
+  wd -= Number(leaveInput.value||0);
   workdays.innerText=wd;
   workhours.innerText=wd*7;
 
-  // OTHER METRICS
-  const daysLeft = diff/86400000;
+  // METRICS
+  mercuryDays.innerText=(diff/(176*86400000)).toFixed(3);
+  births.innerText=Math.floor(d*1800);
+  deaths.innerText=Math.floor(d*1700);
 
-  mercuryDays.innerText=(diff/MERCURY_DAY_MS).toFixed(4);
-  births.innerText=Math.floor(daysLeft*BIRTHS_PER_DAY).toLocaleString();
-  deaths.innerText=Math.floor(daysLeft*DEATHS_PER_DAY).toLocaleString();
+  // PAYDAYS (FIXED)
+  let payCount = 0;
+  let temp = new Date(now.getFullYear(), now.getMonth(), 28);
 
-  // FUTURE PAYDAYS
- // FUTURE PAYDAYS (FIXED + ACCURATE)
+  if(now > temp) temp.setMonth(temp.getMonth()+1);
 
-let payCount = 0;
+  while(temp <= targetDate){
+    payCount++;
+    temp.setMonth(temp.getMonth()+1);
+  }
 
-let temp = new Date(now.getFullYear(), now.getMonth(), 28);
+  paydays.innerText = payCount;
 
-// if we've already passed payday this month, move to next month
-if(now.getDate() > 28){
-  temp.setMonth(temp.getMonth() + 1);
-}
+  // PAYCHECKS
+  let earnedCount=(now.getFullYear()-startDate.getFullYear())*12 +
+                  (now.getMonth()-startDate.getMonth());
+  if(now.getDate()<28) earnedCount--;
+  earnedPay.innerText=Math.max(0,earnedCount);
 
-while(temp <= targetDate){
-  payCount++;
-  temp.setMonth(temp.getMonth() + 1);
-}
-
-paydays.innerText = payCount;
-  // ✅ PAYCHECKS STOLEN (OPTIMISED)
-  const startYear = startDate.getFullYear();
-  const startMonth = startDate.getMonth();
-  const nowYear = now.getFullYear();
-  const nowMonth = now.getMonth();
-
-  let paycheckCount = (nowYear - startYear) * 12 + (nowMonth - startMonth);
-
-  if(now.getDate() < 28) paycheckCount--;
-
-  paycheckCount = Math.max(0, paycheckCount);
-
-  earnedPay.innerText = paycheckCount;
-
-  // BIN DAYS (FIXED)
+  // BIN DAYS
   let binCount=0, b=new Date(startDate);
   while(b<targetDate){
     if(b>now) binCount++;
@@ -239,41 +222,47 @@ paydays.innerText = payCount;
   }
   bins.innerText=binCount;
 
-  // MOON
   moon.innerText=Math.floor(diff/(29.53*86400000));
-
-  // MOVIES
   movies.innerText=Math.floor(diff/(2*3600000));
 
-  // EASTENDERS
-  let ee=0, ed=new Date(now);
+  // EASTENDERS (FIXED)
+  let eeCount=0, ed=new Date(now);
   while(ed<targetDate){
     ed.setDate(ed.getDate()+1);
-    if(ed.getDay()>=1 && ed.getDay()<=4) ee++;
+    if(ed.getDay()>=1 && ed.getDay()<=4) eeCount++;
   }
-  ee.innerText=ee;
+  document.getElementById("ee").innerText=eeCount;
 
-  // 🎉 CELEBRATIONS (FIXED BOTH)
-  const morningStart = new Date(now); morningStart.setHours(9,0,0,0);
-  const morningEnd = new Date(now); morningEnd.setHours(9,5,0,0);
+  // 🎉 CONFETTI
+  const morning = now.getHours()==9 && now.getMinutes()<5;
+  const evening = now.getHours()==16 && now.getMinutes()>=50;
 
-  const eveningStart = new Date(end.getTime() - 10*60000);
-  const eveningEnd = end;
+  if(morning || evening) triggerConfetti();
 
-  if((now >= morningStart && now <= morningEnd) ||
-     (now >= eveningStart && now <= eveningEnd)){
-    spawnConfetti();
-  }
+  // 🖕 FINGER
+  const fingerStart = new Date("2026-02-28");
+
+  let fp = ((now - fingerStart)/(targetDate - fingerStart))*100;
+  fp = Math.max(0,Math.min(100,fp));
+
+  fingerFill.style.width = fp+"%";
+  fingerText.innerText = fp.toFixed(1)+"% to freedom";
+
+  const frames=["✊","🤛","🖐","🖕"];
+  const idx=Math.floor((fp/100)*(frames.length-1));
+  fingerEmoji.innerText=frames[idx];
+  fingerEmoji.style.transform=`rotate(${(fp-50)/10}deg) scale(${1+fp/300})`;
 }
 
-function spawnConfetti(){
-  for(let i=0;i<4;i++){
-    const el=document.createElement("div");
-    el.innerText="🎉";
-    el.style.position="absolute";
+function triggerConfetti(){
+  const c=document.getElementById("celebration");
+  for(let i=0;i<15;i++){
+    let el=document.createElement("div");
+    el.className="confetti";
+    el.innerText=["🎉","✨","🎊"][Math.floor(Math.random()*3)];
     el.style.left=Math.random()*100+"%";
-    celebration.appendChild(el);
-    setTimeout(()=>el.remove(),3000);
+    c.appendChild(el);
+    setTimeout(()=>el.remove(),2000);
   }
 }
 
